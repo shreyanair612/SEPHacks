@@ -31,12 +31,12 @@ WATCHED_FILE = "infrastructure/genomics-storage.tf"
 POLL_INTERVAL = 5  # seconds
 
 BASELINE_CONTENT = """\
-# ===================================================================================
+# =============================================================================
 # Genomics Data Storage — GxP Validated Configuration
 # Baseline: v3.2 (validated 2025-11-15)
 # Environment: gxp-prod-eastus
 # Regulation: 21 CFR Part 11.10(a)
-# ===================================================================================
+# =============================================================================
 
 resource "azurerm_storage_account" "genomics_data" {
   name                     = "genomicsdatastorageprod"
