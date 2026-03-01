@@ -1,0 +1,23 @@
+{
+  "baseline_version": "3.2",
+  "validated_date": "2025-01-15",
+  "resources": {
+    "genomics-data-storage-prod": {
+      "encryption_enabled": true,
+      "https_only": true,
+      "min_tls_version": "TLS1_2",
+      "public_access": false,
+      "replication": "GRS"
+    },
+    "genomics-pipeline-nsg": {
+      "allowed_ports": [443],
+      "denied_ports": [22, 3389, 80],
+      "source_restriction": "10.0.0.0/8"
+    },
+    "pipeline-iam": {
+      "roles": ["Storage Blob Data Reader"],
+      "mfa_required": true,
+      "privileged_access_review": "quarterly"
+    }
+  }
+}
