@@ -21,3 +21,10 @@ resource "azurerm_storage_account" "genomics_data" {
     last_validated  = "2025-01-15"
   }
 }
+
+# VELIRA AUTO-REMEDIATION — 2026-03-01T15:51:55.452784+00:00
+# Drift detected: properties.networkAcls.defaultAction changed from Deny to Allow
+# Severity: CRITICAL
+# Regulation: 21 CFR Part 11.10(a), 21 CFR Part 11.10(d)
+# Action: Restore to GxP validated baseline v3.2
+# Justification: The default network access control for the storage account was changed from 'Deny' to 'Allow', which compromises the confidentiality and integrity of electronic records by potentially exposing them to
