@@ -12,6 +12,7 @@ load_dotenv()
 
 import asyncio
 import json
+import os
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -449,4 +450,5 @@ def _build_resource_view() -> list[dict]:
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=3000)
+    port = int(os.environ.get("PORT", 3000))
+    uvicorn.run(app, host="0.0.0.0", port=port)

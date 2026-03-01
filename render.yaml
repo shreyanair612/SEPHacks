@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: drift-sentinel-api
+    runtime: python
+    plan: free
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: cd backend && uvicorn api:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: GITHUB_TOKEN
+        sync: false
+      - key: GITHUB_REPO_OWNER
+        sync: false
+      - key: GITHUB_REPO_NAME
+        sync: false
+      - key: COSMOS_ENDPOINT
+        value: PLACEHOLDER
+      - key: COSMOS_KEY
+        value: PLACEHOLDER

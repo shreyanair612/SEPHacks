@@ -1,17 +1,16 @@
 """
 Velira GitHub PR Generator
 Opens a real remediation PR on the target repo when critical drift is detected.
-Uses the `gh` CLI for authentication and API calls.
-Falls back to a mock PR URL if `gh` is not available or not authenticated.
+Uses the GitHub REST API via requests + GITHUB_TOKEN.
+Falls back to a mock PR URL if GITHUB_TOKEN is not set.
 """
 
 from __future__ import annotations
 
-import json
 import os
-import subprocess
-import shutil
 from datetime import datetime, timezone
+
+import requests
 
 REPO = os.environ.get(
     "VELIRA_GITHUB_REPO",
@@ -70,48 +69,21 @@ resource "azurerm_storage_account" "genomics_data" {{
 '''
 
 
-def _gh_env() -> dict:
-    """Build a clean env for gh CLI calls, stripping GITHUB_TOKEN so gh uses its own auth."""
-    env = os.environ.copy()
-    env.pop("GITHUB_TOKEN", None)
-    env.pop("GH_TOKEN", None)
-    return env
+GITHUB_API = "https://api.github.com"
 
 
-def _gh(args: list[str], input_data: str | None = None) -> dict | str:
-    """Run a gh CLI command and return parsed JSON or raw output."""
-    result = subprocess.run(
-        ["gh"] + args,
-        capture_output=True,
-        text=True,
-        input=input_data,
-        timeout=30,
-        env=_gh_env(),
-    )
-    if result.returncode != 0:
-        raise RuntimeError(f"gh {' '.join(args[:3])}... failed: {result.stderr.strip()}")
-    out = result.stdout.strip()
-    if not out:
-        return {}
-    try:
-        return json.loads(out)
-    except json.JSONDecodeError:
-        return out
+def _github_headers() -> dict:
+    """Return authorization headers for GitHub REST API."""
+    token = os.environ.get("GITHUB_TOKEN", "")
+    return {
+        "Authorization": f"token {token}",
+        "Accept": "application/vnd.github+json",
+    }
 
 
-def _gh_available() -> bool:
-    """Check if gh CLI is installed and authenticated."""
-    if not shutil.which("gh"):
-        return False
-    try:
-        result = subprocess.run(
-            ["gh", "auth", "status"],
-            capture_output=True, text=True, timeout=10,
-            env=_gh_env(),
-        )
-        return result.returncode == 0
-    except Exception:
-        return False
+def _github_available() -> bool:
+    """Check if GITHUB_TOKEN is configured."""
+    return bool(os.environ.get("GITHUB_TOKEN"))
 
 
 def create_remediation_pr(fix_id: str) -> dict:
@@ -119,40 +91,50 @@ def create_remediation_pr(fix_id: str) -> dict:
     Create a real GitHub PR with Terraform remediation code.
     Returns {"pr_url": "...", "pr_number": N, "real": True/False}.
     """
-    if not _gh_available():
-        print("[Velira] gh CLI not available — returning mock PR URL")
+    if not _github_available():
+        print("[Velira] GITHUB_TOKEN not set — returning mock PR URL")
         return {"pr_url": MOCK_PR_URL, "pr_number": 1042, "real": False}
 
+    headers = _github_headers()
     now = datetime.now(timezone.utc)
     timestamp = now.strftime("%Y-%m-%dT%H:%M:%SZ")
     branch_name = f"velira/critical-fix-{fix_id}"
 
     try:
+        import base64
+
         # 1. Get main branch SHA
-        main_ref = _gh(["api", f"/repos/{REPO}/git/ref/heads/main"])
-        assert isinstance(main_ref, dict)
-        main_sha = main_ref["object"]["sha"]
+        resp = requests.get(f"{GITHUB_API}/repos/{REPO}/git/ref/heads/main", headers=headers, timeout=30)
+        resp.raise_for_status()
+        main_sha = resp.json()["object"]["sha"]
 
         # 2. Create the fix branch (delete first if exists)
-        try:
-            _gh(["api", "--method", "DELETE", f"/repos/{REPO}/git/refs/heads/{branch_name}"])
-        except RuntimeError:
-            pass  # Branch didn't exist, that's fine
+        requests.delete(f"{GITHUB_API}/repos/{REPO}/git/refs/heads/{branch_name}", headers=headers, timeout=30)
 
-        _gh(["api", "--method", "POST", f"/repos/{REPO}/git/refs",
-             "-f", f"ref=refs/heads/{branch_name}",
-             "-f", f"sha={main_sha}"])
+        resp = requests.post(
+            f"{GITHUB_API}/repos/{REPO}/git/refs",
+            headers=headers,
+            json={"ref": f"refs/heads/{branch_name}", "sha": main_sha},
+            timeout=30,
+        )
+        resp.raise_for_status()
 
         # 3. Create Terraform fix file on the branch
-        import base64
         tf_content = TERRAFORM_FIX.format(timestamp=timestamp, fix_id=fix_id)
         encoded = base64.b64encode(tf_content.encode()).decode()
         file_path = f"remediation/fix-{fix_id}-genomics-storage.tf"
 
-        _gh(["api", "--method", "PUT", f"/repos/{REPO}/contents/{file_path}",
-             "-f", f"message=velira: critical remediation for genomics-data-storage-prod [{fix_id}]",
-             "-f", f"content={encoded}",
-             "-f", f"branch={branch_name}"])
+        resp = requests.put(
+            f"{GITHUB_API}/repos/{REPO}/contents/{file_path}",
+            headers=headers,
+            json={
+                "message": f"velira: critical remediation for genomics-data-storage-prod [{fix_id}]",
+                "content": encoded,
+                "branch": branch_name,
+            },
+            timeout=30,
+        )
+        resp.raise_for_status()
 
         # 4. Open the PR
         pr_body = f"""\
@@ -209,22 +191,21 @@ The Terraform file in this PR (`{file_path}`) restores:
 
 *Generated automatically by [Velira GxP Compliance Engine]({DASHBOARD_URL})*"""
 
-        pr = _gh([
-            "pr", "create",
-            "--repo", REPO,
-            "--base", "main",
-            "--head", branch_name,
-            "--title", "CRITICAL: Restore encryption on genomics-data-storage-prod",
-            "--body", pr_body,
-        ])
-
-        # gh pr create returns the PR URL as plain text
-        if isinstance(pr, str):
-            pr_url = pr.strip()
-            pr_number = int(pr_url.rstrip("/").split("/")[-1])
-        else:
-            pr_url = pr.get("html_url", pr.get("url", MOCK_PR_URL))
-            pr_number = pr.get("number", 0)
+        resp = requests.post(
+            f"{GITHUB_API}/repos/{REPO}/pulls",
+            headers=headers,
+            json={
+                "title": "CRITICAL: Restore encryption on genomics-data-storage-prod",
+                "body": pr_body,
+                "head": branch_name,
+                "base": "main",
+            },
+            timeout=30,
+        )
+        resp.raise_for_status()
+        pr_data = resp.json()
+        pr_url = pr_data.get("html_url", "")
+        pr_number = pr_data.get("number", 0)
 
         print(f"[Velira] PR created: {pr_url}")
         return {"pr_url": pr_url, "pr_number": pr_number, "real": True}
