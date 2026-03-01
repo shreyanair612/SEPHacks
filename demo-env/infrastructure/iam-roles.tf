@@ -9,3 +9,10 @@ resource "azurerm_role_assignment" "qa_manager" {
   role_definition_name = "Storage Blob Data Contributor"
   principal_id         = var.qa_manager_principal_id
 }
+
+# VELIRA AUTO-REMEDIATION — 2026-03-01T15:51:55.452784+00:00
+# Drift detected: properties.conditionVersion changed from 2.0 to None
+# Severity: CRITICAL
+# Regulation: 21 CFR Part 11.10(d)
+# Action: Restore to GxP validated baseline v3.2
+# Justification: The removal of 'properties.conditionVersion' from the role assignment configuration eliminates conditional access controls, which are essential for ensuring that only authorized individuals can access
