@@ -20,6 +20,7 @@ from pydantic import BaseModel
 from models import DriftSeverity
 from comparison_engine import compare_configs, load_config
 from classification import classify_all, get_overall_severity
+from github_pr import create_remediation_pr
 
 DATA_DIR = Path(__file__).parent.parent / "data" / "configs"
 
@@ -109,9 +110,23 @@ class Store:
         # Generate events from classifications
         now = datetime.now(timezone.utc)
         self.events = []
-        for i, c in enumerate(self.classifications):
+
+        # If critical scenario, open a real GitHub PR
+        pr_result: dict | None = None
+        has_critical = any(c.get("severity") == "critical" for c in self.classifications)
+        if scenario == "critical" and has_critical:
+            fix_id = str(uuid.uuid4())[:8]
+            pr_result = create_remediation_pr(fix_id)
+
+        for _i, c in enumerate(self.classifications):
             dev = c.get("deviation", {})
             event_id = str(uuid.uuid4())[:8]
+
+            # Attach the real PR link to critical events
+            pr_link: str | None = None
+            if c.get("severity") == "critical" and pr_result:
+                pr_link = pr_result["pr_url"]
+
             event = {
                 "id": event_id,
                 "timestamp": now.isoformat(),
@@ -126,7 +141,7 @@ class Store:
                 "cfr_reference": c.get("cfr_reference", ""),
                 "remediation_suggestion": c.get("remediation_suggestion", ""),
                 "remediation_code": c.get("remediation_code", ""),
-                "pr_link": f"https://github.com/velira-bio/gxp-infrastructure/pull/{1042 + i}" if c.get("severity") == "critical" else None,
+                "pr_link": pr_link,
             }
             self.events.append(event)
 
@@ -141,10 +156,24 @@ class Store:
                 "event_id": event_id,
             })
 
+        # Audit the PR creation itself
+        if pr_result:
+            self.audit_trail.append({
+                "id": str(uuid.uuid4())[:8],
+                "timestamp": now.isoformat(),
+                "action": "pr_created",
+                "resource": "genomics-data-storage-prod",
+                "severity": "critical",
+                "details": f"Remediation PR opened: {pr_result['pr_url']}",
+                "pr_url": pr_result["pr_url"],
+                "pr_real": pr_result["real"],
+            })
+
         return {
             "triggered": scenario,
             "deviations_found": len(self.classifications),
             "state": self.status["state"],
+            "pr": pr_result,
         }
 
 
