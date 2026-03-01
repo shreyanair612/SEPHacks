@@ -1,0 +1,106 @@
+{
+  "environment": "gxp-prod-eastus",
+  "baseline_serial": "v3.2",
+  "validated_date": "2025-11-15T00:00:00Z",
+  "resources": [
+    {
+      "resource_id": "/subscriptions/a1b2c3d4/resourceGroups/gxp-prod/providers/Microsoft.Storage/storageAccounts/genomicsdatastorageprod",
+      "resource_name": "genomics-data-storage-prod",
+      "resource_type": "Microsoft.Storage/storageAccounts",
+      "properties": {
+        "encryption": {
+          "services": {
+            "blob": { "enabled": true },
+            "file": { "enabled": true }
+          },
+          "keySource": "Microsoft.Storage"
+        },
+        "allowBlobPublicAccess": false,
+        "minimumTlsVersion": "TLS1_2",
+        "supportsHttpsTrafficOnly": true,
+        "networkAcls": {
+          "defaultAction": "Deny",
+          "virtualNetworkRules": [
+            { "id": "/subscriptions/a1b2c3d4/resourceGroups/gxp-prod/providers/Microsoft.Network/virtualNetworks/gxp-vnet/subnets/data-subnet" }
+          ]
+        }
+      }
+    },
+    {
+      "resource_id": "/subscriptions/a1b2c3d4/resourceGroups/gxp-prod/providers/Microsoft.Authorization/roleAssignments/pipeline-deployer",
+      "resource_name": "pipeline-iam-roles",
+      "resource_type": "Microsoft.Authorization/roleAssignments",
+      "properties": {
+        "roleDefinitionName": "Contributor",
+        "principalType": "ServicePrincipal",
+        "scope": "/subscriptions/a1b2c3d4/resourceGroups/gxp-prod",
+        "condition": "((!(ActionMatches{'Microsoft.Authorization/roleAssignments/write'}))",
+        "conditionVersion": "2.0"
+      }
+    },
+    {
+      "resource_id": "/subscriptions/a1b2c3d4/resourceGroups/gxp-prod/providers/Microsoft.Network/networkSecurityGroups/gxp-nsg-prod",
+      "resource_name": "network-security-gxp",
+      "resource_type": "Microsoft.Network/networkSecurityGroups",
+      "properties": {
+        "securityRules": [
+          {
+            "name": "AllowSSH",
+            "properties": {
+              "protocol": "Tcp",
+              "destinationPortRange": "22",
+              "sourceAddressPrefix": "10.0.0.0/8",
+              "destinationAddressPrefix": "*",
+              "access": "Allow",
+              "priority": 100,
+              "direction": "Inbound"
+            }
+          },
+          {
+            "name": "AllowHTTPS",
+            "properties": {
+              "protocol": "Tcp",
+              "destinationPortRange": "443",
+              "sourceAddressPrefix": "10.0.0.0/8",
+              "destinationAddressPrefix": "*",
+              "access": "Allow",
+              "priority": 200,
+              "direction": "Inbound"
+            }
+          },
+          {
+            "name": "DenyAllInbound",
+            "properties": {
+              "protocol": "*",
+              "destinationPortRange": "*",
+              "sourceAddressPrefix": "*",
+              "destinationAddressPrefix": "*",
+              "access": "Deny",
+              "priority": 4096,
+              "direction": "Inbound"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "resource_id": "/subscriptions/a1b2c3d4/resourceGroups/gxp-prod/providers/Microsoft.Compute/virtualMachines/gxp-pipeline-vm",
+      "resource_name": "gxp-pipeline-compute",
+      "resource_type": "Microsoft.Compute/virtualMachines",
+      "properties": {
+        "hardwareProfile": {
+          "vmSize": "Standard_D2s_v3"
+        },
+        "osProfile": {
+          "computerName": "gxp-pipeline-vm",
+          "adminUsername": "gxpadmin"
+        },
+        "storageProfile": {
+          "osDisk": {
+            "encryptionSettings": { "enabled": true }
+          }
+        }
+      }
+    }
+  ]
+}

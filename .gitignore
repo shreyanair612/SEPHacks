@@ -9,3 +9,9 @@ local.settings.json
 *.tsbuildinfo
 coverage/
 .nyc_output/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+backend/.env
