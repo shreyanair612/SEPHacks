@@ -21,3 +21,10 @@ resource "azurerm_network_security_group" "pipeline_nsg" {
     baseline_version = "3.2"
   }
 }
+
+# VELIRA AUTO-REMEDIATION — 2026-03-01T15:50:18.156653+00:00
+# Drift detected: properties.securityRules[AllowPort8080].name changed from None to AllowPort8080
+# Severity: CRITICAL
+# Regulation: 21 CFR Part 11.10(a), 21 CFR Part 11.10(d)
+# Action: Restore to GxP validated baseline v3.2
+# Justification: A new security rule allowing traffic on port 8080 was added to the FDA-validated network security group, which was not part of the validated baseline. This change could expose the system to unauthoriz
