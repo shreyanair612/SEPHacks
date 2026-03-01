@@ -4,83 +4,85 @@ import StatusPill from './StatusPill'
 import CodeBlock from './CodeBlock'
 
 const borderColors = {
-  critical: '#533A7B',
+  critical: '#98C1D9',
   suspicious: '#6969B3',
-  allowed: '#98C1D9',
+  allowed: '#533A7B',
 }
 
-export default function DriftEventCard({ evt }){
+export default function DriftEventCard({ evt }) {
   const { tier } = evt
   return (
-    <div className="card p-5" style={{borderLeft:`3px solid ${borderColors[tier] || 'var(--border-color)'}`}}>
-      <div className="flex justify-between items-start">
-        <div className="flex items-center gap-2.5">
+    <div className="glass-panel" style={{ padding: 20, borderLeft: `3px solid ${borderColors[tier] || 'var(--border-default)'}` }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <StatusPill tier={tier}>
             {tier === 'allowed' ? 'Allowed' : tier === 'suspicious' ? 'Suspicious' : 'Critical'}
           </StatusPill>
-          <span style={{fontSize:14, fontWeight:600, color:'var(--text-primary)'}}>{evt.resource_id}</span>
-          <span style={{fontSize:11, background:'#F4F2F7', color:'var(--text-secondary)', padding:'2px 6px', borderRadius:'var(--radius-sm)'}}>{evt.resource_type}</span>
+          <span style={{ fontSize: 14, fontWeight: 600, color: '#FFFFFF' }}>{evt.resource_id}</span>
+          <span style={{ fontSize: 11, background: 'rgba(83, 58, 123, 0.3)', color: 'var(--text-secondary)', padding: '2px 6px', borderRadius: 2 }}>{evt.resource_type}</span>
         </div>
-        <span className="text-[11px]" style={{color:'var(--text-secondary)'}}>{new Date(evt.timestamp).toLocaleString()}</span>
+        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{new Date(evt.timestamp).toLocaleString()}</span>
       </div>
 
-      <div className="mt-3 px-3 py-2 rounded-lg text-xs" style={{background:'#F4F2F7', color:'var(--text-primary)', fontFamily:'"JetBrains Mono", "SF Mono", ui-monospace, monospace'}}>
-        {evt.attribute_path}: <span style={{color:'#533A7B'}}>{String(evt.baseline_value)}</span> → <span style={{color:'#5A8FA8'}}>{String(evt.current_value)}</span>
+      <div style={{ marginTop: 12, padding: '8px 12px', borderRadius: 4, fontSize: 12, background: 'rgba(83, 58, 123, 0.3)', color: 'var(--text-secondary)' }}>
+        {evt.attribute_path}: <span style={{ color: '#98C1D9' }}>{String(evt.baseline_value)}</span> → <span style={{ color: '#6969B3' }}>{String(evt.current_value)}</span>
       </div>
 
-      <div className="mt-3">
-        <div className="font-label uppercase mb-1" style={{fontSize:10, letterSpacing:'0.06em', color:'var(--text-secondary)'}}>AI Analysis</div>
-        <div className="text-sm leading-relaxed p-4 rounded-lg" style={{
-          background: '#F8F6FB',
-          color: 'var(--text-primary)',
-        }}>
+      <div style={{ marginTop: 12 }}>
+        <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.02em', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 6 }}>AI Analysis</div>
+        <div style={{ fontSize: 13, fontWeight: 400, lineHeight: 1.5, padding: 16, borderRadius: 6, background: 'rgba(83, 58, 123, 0.3)', color: 'var(--text-secondary)' }}>
           {evt.reasoning}
         </div>
       </div>
 
       {evt.regulation_reference && (
-        <div className="mt-2">
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded" style={{background:'rgba(152,193,217,0.15)', color:'#533A7B', fontSize:11, fontWeight:500}}>
-            <Scale className="w-3 h-3" />
+        <div style={{ marginTop: 8 }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 2, background: 'rgba(152, 193, 217, 0.12)', color: 'var(--accent-primary)', fontSize: 11, fontWeight: 500 }}>
+            <Scale size={12} />
             {evt.regulation_reference}
           </span>
         </div>
       )}
 
       {tier === 'critical' && evt.gxp_impact && (
-        <div className="mt-3">
-          <div className="font-label uppercase mb-1" style={{fontSize:10, letterSpacing:'0.06em', color:'var(--text-secondary)'}}>GxP Impact</div>
-          <div className="text-sm leading-relaxed p-4 rounded-lg" style={{background:'#F3EEF8', color:'var(--text-primary)'}}>
+        <div style={{ marginTop: 12 }}>
+          <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.02em', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 6 }}>GxP Impact</div>
+          <div style={{ fontSize: 13, fontWeight: 400, lineHeight: 1.5, padding: 16, borderRadius: 6, background: 'rgba(83, 58, 123, 0.3)', color: 'var(--text-secondary)' }}>
             {evt.gxp_impact}
           </div>
         </div>
       )}
 
       {tier === 'critical' && evt.remediation_suggestion && (
-        <div className="mt-3">
-          <div className="font-label uppercase mb-1" style={{fontSize:10, letterSpacing:'0.06em', color:'var(--text-secondary)'}}>Remediation</div>
+        <div style={{ marginTop: 12 }}>
+          <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.02em', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 6 }}>Remediation</div>
           <CodeBlock code={evt.remediation_suggestion} />
         </div>
       )}
 
-      <div className="mt-4 flex justify-end gap-2">
+      <div style={{ marginTop: 16, display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
         {evt.pr && evt.pr.pr_url ? (
           <a
             href={evt.pr.pr_url}
             target="_blank"
             rel="noreferrer"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white"
-            style={{background:'#533A7B', transition:'all 200ms ease'}}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              padding: '6px 12px', borderRadius: 4, fontSize: 12, fontWeight: 500,
+              background: 'var(--accent-secondary)', color: '#FFFFFF', textDecoration: 'none',
+            }}
           >
-            <ExternalLink className="w-3 h-3" />
+            <ExternalLink size={12} />
             View PR {evt.pr.pr_real ? '' : '(demo)'}
           </a>
         ) : null}
-        <button
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
-          style={{border:'1px solid var(--border-color)', color:'var(--text-secondary)', background:'transparent', transition:'all 200ms ease'}}
-        >
-          <CheckCircle className="w-3 h-3" />
+        <button style={{
+          display: 'flex', alignItems: 'center', gap: 6,
+          padding: '6px 12px', borderRadius: 4, fontSize: 12, fontWeight: 500,
+          border: '1px solid var(--border-default)', color: 'var(--text-secondary)',
+          background: 'transparent', cursor: 'pointer',
+        }}>
+          <CheckCircle size={12} />
           Mark Reviewed
         </button>
       </div>

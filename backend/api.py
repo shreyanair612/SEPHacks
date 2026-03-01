@@ -1,10 +1,14 @@
 """
 Velira API Server
-Three endpoints with in-memory storage. No Azure required.
+Three endpoints with in-memory storage.
 Runs the full comparison + classification pipeline locally.
+Azure AI Function used for classification when available.
 """
 
 from __future__ import annotations
+
+from dotenv import load_dotenv
+load_dotenv()
 
 import json
 import uuid

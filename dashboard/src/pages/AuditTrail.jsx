@@ -1,14 +1,13 @@
 import React from 'react'
 import { Download } from 'lucide-react'
 import Sidebar from '../components/Sidebar'
-import Navbar from '../components/Navbar'
 import StatusPill from '../components/StatusPill'
 import { useApp } from '../context/AppContext'
 
-export default function AuditTrail(){
+export default function AuditTrail() {
   const { events, status } = useApp()
 
-  async function exportAudit(){
+  async function exportAudit() {
     const payload = {
       generated_at: new Date().toISOString(),
       environment: status?.environment || 'unknown',
@@ -36,68 +35,67 @@ export default function AuditTrail(){
   }
 
   return (
-    <div className="min-h-screen" style={{background:'var(--bg-primary)'}}>
+    <div style={{ minHeight: '100vh' }}>
       <Sidebar />
-      <div className="ml-60">
-        <Navbar />
-        <main className="p-8">
-          <div className="flex justify-between items-center mb-4">
-            <h1 className="text-xl" style={{color:'var(--text-primary)'}}>Audit Trail</h1>
-            <button
-              onClick={exportAudit}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white"
-              style={{background:'#533A7B', transition:'all 200ms ease'}}
-            >
-              <Download className="w-3 h-3" />
-              Export Audit Report
-            </button>
-          </div>
+      <div style={{ marginLeft: 240, padding: '32px 40px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+          <h1 style={{ fontSize: 24, fontWeight: 700, color: '#FFFFFF', letterSpacing: '-0.02em' }}>Audit Trail</h1>
+          <button
+            onClick={exportAudit}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              padding: '8px 16px', borderRadius: 4, fontSize: 12, fontWeight: 600,
+              background: 'var(--accent-secondary)', color: '#FFFFFF',
+              border: 'none', cursor: 'pointer',
+            }}
+          >
+            <Download size={14} />
+            Export Audit Report
+          </button>
+        </div>
 
-          <div className="card overflow-hidden">
-            <table className="w-full text-xs">
-              <thead>
-                <tr style={{background:'var(--bg-primary)', borderBottom:'1px solid var(--border-color)'}}>
-                  <th className="text-left px-4 py-3 font-label" style={{fontSize:10, letterSpacing:'0.04em', color:'var(--text-secondary)', textTransform:'uppercase'}}>Timestamp</th>
-                  <th className="text-left px-4 py-3 font-label" style={{fontSize:10, letterSpacing:'0.04em', color:'var(--text-secondary)', textTransform:'uppercase'}}>Resource</th>
-                  <th className="text-left px-4 py-3 font-label" style={{fontSize:10, letterSpacing:'0.04em', color:'var(--text-secondary)', textTransform:'uppercase'}}>Type</th>
-                  <th className="text-left px-4 py-3 font-label" style={{fontSize:10, letterSpacing:'0.04em', color:'var(--text-secondary)', textTransform:'uppercase'}}>Change</th>
-                  <th className="text-left px-4 py-3 font-label" style={{fontSize:10, letterSpacing:'0.04em', color:'var(--text-secondary)', textTransform:'uppercase'}}>Severity</th>
-                  <th className="text-left px-4 py-3 font-label" style={{fontSize:10, letterSpacing:'0.04em', color:'var(--text-secondary)', textTransform:'uppercase'}}>Regulation</th>
-                  <th className="text-left px-4 py-3 font-label" style={{fontSize:10, letterSpacing:'0.04em', color:'var(--text-secondary)', textTransform:'uppercase'}}>PR</th>
-                  <th className="text-left px-4 py-3 font-label" style={{fontSize:10, letterSpacing:'0.04em', color:'var(--text-secondary)', textTransform:'uppercase'}}>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(events || []).map(e => (
-                  <tr key={e.id} style={{borderBottom:'1px solid var(--border-color)', transition:'background 200ms ease'}}>
-                    <td className="px-4 py-3" style={{color:'var(--text-secondary)'}}>{new Date(e.timestamp).toLocaleString()}</td>
-                    <td className="px-4 py-3" style={{color:'var(--text-primary)', fontWeight:600}}>{e.resource_id}</td>
-                    <td className="px-4 py-3" style={{color:'var(--text-secondary)'}}>{e.resource_type}</td>
-                    <td className="px-4 py-3" style={{color:'var(--text-primary)', fontFamily:'"JetBrains Mono", monospace', fontSize:11}}>
-                      {e.attribute_path}: {String(e.baseline_value)} → {String(e.current_value)}
-                    </td>
-                    <td className="px-4 py-3"><StatusPill tier={e.tier}>{e.tier}</StatusPill></td>
-                    <td className="px-4 py-3" style={{color:'var(--text-secondary)', maxWidth:160}}>{e.regulation_reference || '-'}</td>
-                    <td className="px-4 py-3">
-                      {e.pr && e.pr.pr_url ? (
-                        <a href={e.pr.pr_url} target="_blank" rel="noreferrer" className="font-medium" style={{color:'#533A7B'}}>View PR</a>
-                      ) : <span style={{color:'var(--text-secondary)'}}>-</span>}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="inline-flex items-center gap-1">
-                        <span className="w-1.5 h-1.5 rounded-full" style={{background: e.status === 'open' ? '#6969B3' : '#5A8FA8'}} />
-                        <span style={{color:'var(--text-secondary)'}}>{e.status}</span>
-                      </span>
-                    </td>
-                  </tr>
+        <div className="glass-panel-static" style={{ overflow: 'hidden' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.04)' }}>
+                {['Timestamp', 'Resource', 'Type', 'Change', 'Severity', 'Regulation', 'PR', 'Status'].map(h => (
+                  <th key={h} style={{ textAlign: 'left', padding: '12px 16px', fontSize: 10, fontWeight: 600, letterSpacing: '0.02em', color: 'var(--text-muted)', textTransform: 'uppercase' }}>{h}</th>
                 ))}
-              </tbody>
-            </table>
-            {(!events || events.length === 0) && (
-              <div className="text-center py-10 text-sm" style={{color:'var(--text-secondary)'}}>No audit entries</div>
-            )}
-          </div>
-        </main>
+              </tr>
+            </thead>
+            <tbody>
+              {(events || []).map(e => (
+                <tr key={e.id} style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.04)', transition: 'background var(--transition-smooth)' }}
+                  onMouseEnter={ev => ev.currentTarget.style.background = 'rgba(152, 193, 217, 0.03)'}
+                  onMouseLeave={ev => ev.currentTarget.style.background = 'transparent'}
+                >
+                  <td style={{ padding: '12px 16px', color: 'var(--text-muted)', fontWeight: 300 }}>{new Date(e.timestamp).toLocaleString()}</td>
+                  <td style={{ padding: '12px 16px', color: '#FFFFFF', fontWeight: 600 }}>{e.resource_id}</td>
+                  <td style={{ padding: '12px 16px', color: 'var(--text-muted)', fontWeight: 400 }}>{e.resource_type}</td>
+                  <td style={{ padding: '12px 16px', color: 'var(--text-secondary)', fontSize: 11, fontWeight: 400 }}>
+                    {e.attribute_path}: {String(e.baseline_value)} → {String(e.current_value)}
+                  </td>
+                  <td style={{ padding: '12px 16px' }}><StatusPill tier={e.tier}>{e.tier}</StatusPill></td>
+                  <td style={{ padding: '12px 16px', color: 'var(--text-muted)', fontWeight: 400, maxWidth: 160 }}>{e.regulation_reference || '-'}</td>
+                  <td style={{ padding: '12px 16px' }}>
+                    {e.pr && e.pr.pr_url ? (
+                      <a href={e.pr.pr_url} target="_blank" rel="noreferrer" style={{ color: 'var(--accent-primary)', fontWeight: 500 }}>View PR</a>
+                    ) : <span style={{ color: 'var(--text-muted)' }}>-</span>}
+                  </td>
+                  <td style={{ padding: '12px 16px' }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: e.status === 'open' ? 'var(--status-warning)' : 'var(--status-success)' }} />
+                      <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}>{e.status}</span>
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {(!events || events.length === 0) && (
+            <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)', fontSize: 13, fontWeight: 300 }}>No audit entries</div>
+          )}
+        </div>
       </div>
     </div>
   )

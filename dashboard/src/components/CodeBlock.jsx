@@ -1,20 +1,52 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { Copy } from 'lucide-react'
 
-export default function CodeBlock({ code }){
-  async function copy(){
-    await navigator.clipboard.writeText(code)
+export default function CodeBlock({ code }) {
+  const [copied, setCopied] = useState(false)
+
+  function handleCopy() {
+    navigator.clipboard.writeText(code)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1500)
   }
+
   return (
-    <div className="relative mt-1">
-      <pre className="code-block">{code}</pre>
+    <div style={{ position: 'relative' }}>
+      <pre style={{
+        background: 'var(--bg-deep)',
+        color: 'var(--accent-primary)',
+        padding: 16,
+        borderRadius: 6,
+        fontSize: 13,
+        lineHeight: 1.6,
+        whiteSpace: 'pre-wrap',
+        overflowX: 'auto',
+        border: '1px solid var(--border-default)',
+        margin: 0,
+      }}>
+        {code}
+      </pre>
       <button
-        onClick={copy}
-        className="absolute top-3 right-3 flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-md"
-        style={{background:'rgba(152,193,217,0.15)', color:'#98C1D9', fontFamily:'"JetBrains Mono", "SF Mono", ui-monospace, monospace'}}
+        onClick={handleCopy}
+        style={{
+          position: 'absolute',
+          top: 8,
+          right: 8,
+          background: 'rgba(152, 193, 217, 0.15)',
+          color: 'var(--accent-primary)',
+          border: 'none',
+          borderRadius: 4,
+          padding: '4px 8px',
+          cursor: 'pointer',
+          fontSize: 11,
+          fontWeight: 500,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 4,
+        }}
       >
-        <Copy className="w-3 h-3" />
-        Copy
+        <Copy size={12} />
+        {copied ? 'Copied' : 'Copy'}
       </button>
     </div>
   )

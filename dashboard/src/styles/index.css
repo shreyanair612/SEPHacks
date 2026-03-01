@@ -3,26 +3,46 @@
 @tailwind utilities;
 
 :root {
-  --bg-primary: #F8F6FB;
-  --bg-card: #FFFFFF;
-  --color-accent: #533A7B;
-  --color-accent-light: rgba(152,193,217,0.15);
-  --color-powder: #98C1D9;
-  --color-slate: #6969B3;
-  --color-violet: #533A7B;
-  --color-blackberry: #4B244A;
-  --color-coffee: #25171A;
-  --color-success: #5A8FA8;
-  --color-warning: #6969B3;
-  --color-danger: #533A7B;
-  --text-primary: #25171A;
-  --text-secondary: #6B6178;
-  --border-color: #E8E4EE;
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
-  --shadow-card: 0 1px 2px rgba(0,0,0,0.03), 0 4px 16px rgba(0,0,0,0.03);
-  --shadow-card-hover: 0 4px 24px rgba(83,58,123,0.08), 0 0 0 1px rgba(83,58,123,0.06);
+  /* ── 5-Color Structural Palette ─────────── */
+  --accent-primary: #98C1D9;       /* Powder Blue */
+  --accent-secondary: #6969B3;     /* Slate Blue */
+  --surface-dark: #533A7B;         /* Indigo Violet */
+  --bg-app: #4B244A;               /* Blackberry Cream */
+  --bg-deep: #25171A;              /* Coffee Bean */
+
+  /* ── Panel Surfaces ─────────────────────── */
+  --bg-panel: rgba(83, 58, 123, 0.55);
+  --bg-panel-hover: rgba(83, 58, 123, 0.7);
+
+  /* ── Text Hierarchy (white at opacity) ──── */
+  --text-primary: rgba(255, 255, 255, 1);
+  --text-secondary: rgba(255, 255, 255, 0.7);
+  --text-muted: rgba(255, 255, 255, 0.4);
+
+  /* ── Borders ────────────────────────────── */
+  --border-default: rgba(152, 193, 217, 0.08);
+  --border-hover: rgba(152, 193, 217, 0.2);
+  --border-focus: rgba(105, 105, 179, 0.4);
+
+  /* ── Status Colors (badges & labels ONLY) ─ */
+  --status-success: #66BB6A;
+  --status-warning: #FFA726;
+  --status-critical: #EF5350;
+
+  /* ── Radii ──────────────────────────────── */
+  --radius-card: 6px;
+  --radius-button: 4px;
+  --radius-small: 2px;
+
+  /* ── Shadows ────────────────────────────── */
+  --shadow-float: 0 4px 24px rgba(0, 0, 0, 0.2);
+  --shadow-glow: 0 0 30px rgba(152, 193, 217, 0.06);
+
+  /* ── Blur ────────────────────────────────── */
+  --blur-panel: blur(24px);
+
+  /* ── Motion ─────────────────────────────── */
+  --transition-smooth: 0.3s cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 * {
@@ -30,97 +50,118 @@
 }
 
 body {
-  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", sans-serif;
   color: var(--text-primary);
-  background: var(--bg-primary);
+  background: var(--bg-app);
   margin: 0;
+  min-height: 100vh;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background:
+    radial-gradient(ellipse at top left, rgba(83, 58, 123, 0.4) 0%, transparent 60%),
+    radial-gradient(ellipse at bottom right, rgba(37, 23, 26, 0.3) 0%, transparent 60%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+#root {
+  position: relative;
+  z-index: 1;
+}
+
 h1, h2, h3, h4, h5, h6 {
-  font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
-  font-weight: 600;
-  letter-spacing: -0.01em;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", sans-serif;
+  letter-spacing: -0.02em;
+  margin: 0;
 }
 
-.code-block {
-  background: #4B244A;
-  color: #98C1D9;
-  font-family: "JetBrains Mono", "SF Mono", ui-monospace, monospace;
-  padding: 16px;
-  border-radius: var(--radius-lg);
-  font-size: 13px;
-  line-height: 1.6;
-  white-space: pre-wrap;
-  overflow-x: auto;
+/* ── Glassmorphism Panels ────────────────── */
+.glass-panel {
+  background: var(--bg-panel);
+  backdrop-filter: var(--blur-panel);
+  -webkit-backdrop-filter: var(--blur-panel);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-card);
+  transition: border-color var(--transition-smooth), transform var(--transition-smooth), box-shadow var(--transition-smooth);
 }
 
-/* ── Card base ─────────────────────────────── */
-.card {
-  background: var(--bg-card);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-card);
-  border: none;
-  transition: box-shadow 200ms ease, transform 200ms ease;
+.glass-panel:hover {
+  border-color: var(--border-hover);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-glow);
 }
 
-.card:hover {
-  box-shadow: var(--shadow-card-hover);
-  transform: translateY(-3px);
+.glass-panel-static {
+  background: var(--bg-panel);
+  backdrop-filter: var(--blur-panel);
+  -webkit-backdrop-filter: var(--blur-panel);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-card);
 }
 
-/* Card that shouldn't lift (tables, containers) */
-.card-static {
-  background: var(--bg-card);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-card);
-  border: none;
-}
-
-/* ── Staggered fade-in ─────────────────────── */
-@keyframes cardFadeIn {
-  from { opacity: 0; transform: translateY(6px); }
+/* ── Staggered Fade-in ───────────────────── */
+@keyframes fadeSlideIn {
+  from { opacity: 0; transform: translateY(12px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 
 .fade-in {
   opacity: 0;
-  animation: cardFadeIn 250ms var(--ease-out-expo, cubic-bezier(0.16, 1, 0.3, 1)) forwards;
+  animation: fadeSlideIn 400ms cubic-bezier(0.23, 1, 0.32, 1) forwards;
 }
 
 .fade-in-0 { animation-delay: 0ms; }
-.fade-in-1 { animation-delay: 50ms; }
-.fade-in-2 { animation-delay: 100ms; }
-.fade-in-3 { animation-delay: 150ms; }
-.fade-in-4 { animation-delay: 200ms; }
-.fade-in-5 { animation-delay: 250ms; }
-.fade-in-6 { animation-delay: 300ms; }
-.fade-in-7 { animation-delay: 350ms; }
+.fade-in-1 { animation-delay: 60ms; }
+.fade-in-2 { animation-delay: 120ms; }
+.fade-in-3 { animation-delay: 180ms; }
+.fade-in-4 { animation-delay: 240ms; }
+.fade-in-5 { animation-delay: 300ms; }
+.fade-in-6 { animation-delay: 360ms; }
+.fade-in-7 { animation-delay: 420ms; }
+.fade-in-8 { animation-delay: 480ms; }
+.fade-in-9 { animation-delay: 540ms; }
 
-/* ── Skeleton pulse ────────────────────────── */
+/* ── Skeleton Pulse ──────────────────────── */
 @keyframes skeletonPulse {
-  0%, 100% { opacity: 0.4; }
-  50%      { opacity: 0.8; }
+  0%, 100% { background: rgba(83, 58, 123, 0.3); }
+  50%      { background: rgba(83, 58, 123, 0.5); }
 }
 
 .skeleton {
-  background: var(--border-color);
-  border-radius: var(--radius-md);
-  animation: skeletonPulse 1.2s ease-in-out infinite;
+  border-radius: var(--radius-card);
+  animation: skeletonPulse 1.5s ease-in-out infinite;
+  background: rgba(83, 58, 123, 0.3);
 }
 
-/* ── Sidebar nav hover ─────────────────────── */
+/* ── Pulsing Dot ─────────────────────────── */
+@keyframes pulseDot {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.4); opacity: 0.7; }
+}
+
+.pulse-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent-primary);
+  animation: pulseDot 2s ease-in-out infinite;
+}
+
+/* ── Sidebar Nav ─────────────────────────── */
 .nav-item {
-  transition: background 200ms ease, color 200ms ease;
+  transition: color var(--transition-smooth), background var(--transition-smooth);
 }
 
-.nav-item:not(.nav-active):hover {
-  background: rgba(152,193,217,0.08);
-  color: var(--text-primary);
-}
-
-/* ── Expandable table row ──────────────────── */
+/* ── Expand Panel ────────────────────────── */
 .expand-panel {
   display: grid;
   grid-template-rows: 0fr;
@@ -135,14 +176,38 @@ h1, h2, h3, h4, h5, h6 {
   overflow: hidden;
 }
 
-/* ── Font utility ─────────────────────────── */
-.font-heading {
-  font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
-  font-weight: 600;
-  letter-spacing: -0.01em;
+/* ── Scrollbar ───────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
 }
 
-.font-label {
-  font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
-  font-weight: 600;
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(152, 193, 217, 0.15);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(152, 193, 217, 0.25);
+}
+
+/* ── Welcome Page Fade-in ────────────────── */
+@keyframes welcomeFadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Event Dot Opacity Pulse ─────────────── */
+@keyframes eventDotPulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.7; }
+}
+
+/* ── Event Row Highlight Glow ────────────── */
+@keyframes eventHighlight {
+  0%   { border-color: var(--accent-primary); box-shadow: 0 0 12px rgba(152, 193, 217, 0.2); }
+  100% { border-color: transparent; box-shadow: none; }
 }

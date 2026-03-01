@@ -55,20 +55,9 @@ export function AppProvider({ children }){
     return () => clearInterval(id)
   }, [])
 
-  async function simulateScenario(scenario){
-    try {
-      const res = await api.triggerDrift(scenario)
-      await loadAll()
-      return res
-    } catch (err){
-      setOffline(true)
-      return { error: 'backend-unreachable' }
-    }
-  }
-
   return (
     <AppContext.Provider value={{
-      status, events, offline, simulateScenario, lastFetchedAt: lastFetchedRef.current
+      status, events, offline, lastFetchedAt: lastFetchedRef.current
     }}>
       {children}
     </AppContext.Provider>

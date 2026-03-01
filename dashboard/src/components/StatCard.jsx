@@ -17,14 +17,14 @@ function AnimatedValue({ value }) {
   return <>{value}</>
 }
 
-export default function StatCard({ title, value, subtitle, accentColor, className }){
+export default function StatCard({ title, value, subtitle, accentColor, className }) {
   return (
-    <div className={`card ${className || ''}`} style={{padding:16}}>
-      <div style={{fontSize:11, fontWeight:600, letterSpacing:'0.04em', color:'var(--text-secondary)', marginBottom:4, textTransform:'uppercase'}}>{title}</div>
-      <div style={{fontFamily:'"JetBrains Mono", "SF Mono", ui-monospace, monospace', fontSize:24, fontWeight:600, color: accentColor || 'var(--text-primary)', lineHeight:1.2}}>
+    <div className={`glass-panel ${className || ''}`} style={{ padding: 24 }}>
+      <div style={{ fontSize: 12, fontWeight: 600, letterSpacing: '0.02em', color: 'var(--text-muted)', marginBottom: 8, textTransform: 'uppercase' }}>{title}</div>
+      <div style={{ fontSize: 32, fontWeight: 700, color: accentColor || '#FFFFFF', lineHeight: 1, letterSpacing: '-0.02em' }}>
         <AnimatedValue value={value} />
       </div>
-      {subtitle && <div style={{fontSize:12, color:'var(--text-secondary)', marginTop:4}}>{subtitle}</div>}
+      {subtitle && <div style={{ fontSize: 12, fontWeight: 300, color: 'var(--text-muted)', marginTop: 8 }}>{subtitle}</div>}
     </div>
   )
 }

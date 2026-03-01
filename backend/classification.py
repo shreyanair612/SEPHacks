@@ -7,17 +7,11 @@ Uses Azure OpenAI when available, falls back to cached responses.
 from __future__ import annotations
 
 import json
-import os
 from typing import Any
 
 from models import Deviation, DriftClassification, DriftSeverity
 from cached_responses import get_cached_classification
-
-# Azure OpenAI config — placeholders until Shreya provides credentials
-AZURE_OPENAI_ENDPOINT = os.environ.get("AZURE_OPENAI_ENDPOINT", "")
-AZURE_OPENAI_KEY = os.environ.get("AZURE_OPENAI_KEY", "")
-AZURE_OPENAI_DEPLOYMENT = os.environ.get("AZURE_OPENAI_DEPLOYMENT", "gpt-4o")
-AZURE_OPENAI_API_VERSION = os.environ.get("AZURE_OPENAI_API_VERSION", "2024-12-01-preview")
+from azure_ai_client import call_azure_ai
 
 GXP_SYSTEM_PROMPT = """You are Velira, an FDA compliance AI engine specialized in GxP cloud configuration drift analysis.
 
@@ -61,48 +55,37 @@ Respond in JSON format:
 }}"""
 
 
-def _classify_with_openai(deviation: Deviation) -> dict | None:
-    """Call Azure OpenAI for classification. Returns None if unavailable."""
-    if not AZURE_OPENAI_ENDPOINT or not AZURE_OPENAI_KEY:
+def _classify_with_azure_ai(deviation: Deviation) -> dict | None:
+    """Call Azure AI Function for classification. Returns normalized dict or None."""
+    message = f"{GXP_SYSTEM_PROMPT}\n\n{GXP_USER_PROMPT_TEMPLATE.format(
+        resource_name=deviation.resource_name,
+        resource_type=deviation.resource_type,
+        resource_id=deviation.resource_id,
+        attribute_path=deviation.attribute_path,
+        baseline_value=deviation.baseline_value,
+        current_value=deviation.current_value,
+        detected_at=deviation.detected_at,
+    )}"
+
+    response_text = call_azure_ai(message)
+    if response_text is None:
         return None
 
     try:
-        from openai import AzureOpenAI
+        data = json.loads(response_text)
+    except json.JSONDecodeError:
+        print(f"[Velira] Azure AI returned non-JSON response — falling back")
+        return None
 
-        client = AzureOpenAI(
-            azure_endpoint=AZURE_OPENAI_ENDPOINT,
-            api_key=AZURE_OPENAI_KEY,
-            api_version=AZURE_OPENAI_API_VERSION,
-        )
-
-        user_prompt = GXP_USER_PROMPT_TEMPLATE.format(
-            resource_name=deviation.resource_name,
-            resource_type=deviation.resource_type,
-            resource_id=deviation.resource_id,
-            attribute_path=deviation.attribute_path,
-            baseline_value=deviation.baseline_value,
-            current_value=deviation.current_value,
-            detected_at=deviation.detected_at,
-        )
-
-        response = client.chat.completions.create(
-            model=AZURE_OPENAI_DEPLOYMENT,
-            messages=[
-                {"role": "system", "content": GXP_SYSTEM_PROMPT},
-                {"role": "user", "content": user_prompt},
-            ],
-            temperature=0.1,
-            max_tokens=1000,
-            response_format={"type": "json_object"},
-        )
-
-        content = response.choices[0].message.content
-        if content:
-            return json.loads(content)
-    except Exception as e:
-        print(f"[Velira] OpenAI classification failed: {e} — falling back to cache")
-
-    return None
+    # Normalize: Azure Function uses "tier", our schema uses "severity"
+    return {
+        "severity": data.get("tier", data.get("severity", "suspicious")),
+        "reason": data.get("reason", ""),
+        "gxp_impact": data.get("gxp_impact", ""),
+        "cfr_reference": data.get("cfr_reference", ""),
+        "remediation_suggestion": data.get("remediation_suggestion", ""),
+        "remediation_code": data.get("remediation_code", ""),
+    }
 
 
 def _classify_with_cache(deviation: Deviation) -> dict | None:
@@ -129,16 +112,21 @@ def classify_deviation(deviation: Deviation) -> DriftClassification:
     Classify a single deviation. Tries Azure OpenAI first,
     falls back to cached responses, then to default classification.
     """
-    # Try OpenAI first
-    result = _classify_with_openai(deviation)
+    # Try Azure AI Function first
+    result = _classify_with_azure_ai(deviation)
+    source = "azure-ai"
 
     # Fall back to cache
     if result is None:
         result = _classify_with_cache(deviation)
+        source = "cache"
 
     # Final fallback
     if result is None:
         result = _default_classification(deviation)
+        source = "default"
+
+    print(f"[Velira] Classified {deviation.attribute_path} → {result['severity']} (source: {source})")
 
     severity_map = {
         "critical": DriftSeverity.CRITICAL,
@@ -185,4 +173,3 @@ if __name__ == "__main__":
     print(f"Severity: {result.severity.value}")
     print(f"Reason: {result.reason}")
     print(f"CFR: {result.cfr_reference}")
-    print(f"Source: cached (no Azure credentials)")
