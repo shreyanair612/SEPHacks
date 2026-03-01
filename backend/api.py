@@ -55,6 +55,7 @@ class Store:
             for c in classifications:
                 counts[c.severity.value] += 1
 
+            now_iso = datetime.now(timezone.utc).isoformat()
             self.status = {
                 "state": overall,
                 "environment": "gxp-prod-eastus",
@@ -63,12 +64,15 @@ class Store:
                 "compliant_resources": 4 - len({d.resource_name for d in deviations}),
                 "drifted_resources": len({d.resource_name for d in deviations}),
                 "risk_score": min(100, counts["critical"] * 25 + counts["suspicious"] * 10),
-                "last_scan": datetime.now(timezone.utc).isoformat(),
+                "last_scan": now_iso,
+                "last_updated": now_iso,
+                "counts": counts,
                 "summary": counts,
                 "scenario": self.current_scenario,
             }
         else:
             self.classifications = []
+            now_iso = datetime.now(timezone.utc).isoformat()
             self.status = {
                 "state": "compliant",
                 "environment": "gxp-prod-eastus",
@@ -77,12 +81,22 @@ class Store:
                 "compliant_resources": 4,
                 "drifted_resources": 0,
                 "risk_score": 0,
-                "last_scan": datetime.now(timezone.utc).isoformat(),
+                "last_scan": now_iso,
+                "last_updated": now_iso,
+                "counts": {"critical": 0, "suspicious": 0, "allowed": 0},
                 "summary": {"critical": 0, "suspicious": 0, "allowed": 0},
                 "scenario": self.current_scenario,
             }
 
     def trigger_drift(self, scenario: str) -> dict:
+        # Map new frontend scenario names to backend names
+        alias_map = {
+            "critical-encryption": "critical",
+            "suspicious-port": "suspicious",
+            "allowed-scaling": "allowed",
+        }
+        scenario = alias_map.get(scenario, scenario)
+
         scenario_files = {
             "allowed": "drift_allowed.json",
             "suspicious": "drift_suspicious.json",
@@ -122,26 +136,35 @@ class Store:
             dev = c.get("deviation", {})
             event_id = str(uuid.uuid4())[:8]
 
-            # Attach the real PR link to critical events
-            pr_link: str | None = None
+            # Attach the real PR object to critical events
+            pr_obj: dict | None = None
             if c.get("severity") == "critical" and pr_result:
-                pr_link = pr_result["pr_url"]
+                pr_obj = {"pr_url": pr_result["pr_url"], "pr_real": pr_result["real"]}
 
+            severity = c.get("severity", "suspicious")
             event = {
                 "id": event_id,
                 "timestamp": now.isoformat(),
-                "resource_name": dev.get("resource_name", "unknown"),
+                # New frontend field names
+                "resource_id": dev.get("resource_name", "unknown"),
                 "resource_type": dev.get("resource_type", "unknown"),
                 "attribute_path": dev.get("attribute_path", ""),
                 "baseline_value": dev.get("baseline_value"),
                 "current_value": dev.get("current_value"),
-                "severity": c.get("severity", "suspicious"),
-                "reason": c.get("reason", ""),
+                "tier": severity,
+                "reasoning": c.get("reason", ""),
                 "gxp_impact": c.get("gxp_impact", ""),
-                "cfr_reference": c.get("cfr_reference", ""),
+                "regulation_reference": c.get("cfr_reference", ""),
                 "remediation_suggestion": c.get("remediation_suggestion", ""),
                 "remediation_code": c.get("remediation_code", ""),
-                "pr_link": pr_link,
+                "pr": pr_obj,
+                "status": "open",
+                # Keep legacy names for backward compat
+                "resource_name": dev.get("resource_name", "unknown"),
+                "severity": severity,
+                "reason": c.get("reason", ""),
+                "cfr_reference": c.get("cfr_reference", ""),
+                "pr_link": pr_obj["pr_url"] if pr_obj else None,
             }
             self.events.append(event)
 
@@ -225,12 +248,9 @@ def get_status() -> dict:
 
 
 @app.get("/api/events")
-def get_events() -> dict:
-    """Drift event feed, newest first."""
-    return {
-        "events": sorted(store.events, key=lambda e: e["timestamp"], reverse=True),
-        "total": len(store.events),
-    }
+def get_events() -> list:
+    """Drift event feed, newest first. Returns a bare array."""
+    return sorted(store.events, key=lambda e: e["timestamp"], reverse=True)
 
 
 @app.get("/api/audit-trail")

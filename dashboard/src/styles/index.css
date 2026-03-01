@@ -1,0 +1,148 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg-primary: #F8F6FB;
+  --bg-card: #FFFFFF;
+  --color-accent: #533A7B;
+  --color-accent-light: rgba(152,193,217,0.15);
+  --color-powder: #98C1D9;
+  --color-slate: #6969B3;
+  --color-violet: #533A7B;
+  --color-blackberry: #4B244A;
+  --color-coffee: #25171A;
+  --color-success: #5A8FA8;
+  --color-warning: #6969B3;
+  --color-danger: #533A7B;
+  --text-primary: #25171A;
+  --text-secondary: #6B6178;
+  --border-color: #E8E4EE;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --shadow-card: 0 1px 2px rgba(0,0,0,0.03), 0 4px 16px rgba(0,0,0,0.03);
+  --shadow-card-hover: 0 4px 24px rgba(83,58,123,0.08), 0 0 0 1px rgba(83,58,123,0.06);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: var(--text-primary);
+  background: var(--bg-primary);
+  margin: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.code-block {
+  background: #4B244A;
+  color: #98C1D9;
+  font-family: "JetBrains Mono", "SF Mono", ui-monospace, monospace;
+  padding: 16px;
+  border-radius: var(--radius-lg);
+  font-size: 13px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-x: auto;
+}
+
+/* ── Card base ─────────────────────────────── */
+.card {
+  background: var(--bg-card);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+  border: none;
+  transition: box-shadow 200ms ease, transform 200ms ease;
+}
+
+.card:hover {
+  box-shadow: var(--shadow-card-hover);
+  transform: translateY(-3px);
+}
+
+/* Card that shouldn't lift (tables, containers) */
+.card-static {
+  background: var(--bg-card);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+  border: none;
+}
+
+/* ── Staggered fade-in ─────────────────────── */
+@keyframes cardFadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.fade-in {
+  opacity: 0;
+  animation: cardFadeIn 250ms var(--ease-out-expo, cubic-bezier(0.16, 1, 0.3, 1)) forwards;
+}
+
+.fade-in-0 { animation-delay: 0ms; }
+.fade-in-1 { animation-delay: 50ms; }
+.fade-in-2 { animation-delay: 100ms; }
+.fade-in-3 { animation-delay: 150ms; }
+.fade-in-4 { animation-delay: 200ms; }
+.fade-in-5 { animation-delay: 250ms; }
+.fade-in-6 { animation-delay: 300ms; }
+.fade-in-7 { animation-delay: 350ms; }
+
+/* ── Skeleton pulse ────────────────────────── */
+@keyframes skeletonPulse {
+  0%, 100% { opacity: 0.4; }
+  50%      { opacity: 0.8; }
+}
+
+.skeleton {
+  background: var(--border-color);
+  border-radius: var(--radius-md);
+  animation: skeletonPulse 1.2s ease-in-out infinite;
+}
+
+/* ── Sidebar nav hover ─────────────────────── */
+.nav-item {
+  transition: background 200ms ease, color 200ms ease;
+}
+
+.nav-item:not(.nav-active):hover {
+  background: rgba(152,193,217,0.08);
+  color: var(--text-primary);
+}
+
+/* ── Expandable table row ──────────────────── */
+.expand-panel {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 200ms ease;
+}
+
+.expand-panel.open {
+  grid-template-rows: 1fr;
+}
+
+.expand-panel > div {
+  overflow: hidden;
+}
+
+/* ── Font utility ─────────────────────────── */
+.font-heading {
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.font-label {
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+  font-weight: 600;
+}
