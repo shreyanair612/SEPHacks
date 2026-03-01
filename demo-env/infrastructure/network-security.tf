@@ -21,3 +21,10 @@ resource "azurerm_network_security_group" "pipeline_nsg" {
     baseline_version = "3.2"
   }
 }
+
+# VELIRA AUTO-REMEDIATION — 2026-03-01T15:50:18.156653+00:00
+# Drift detected: properties.securityRules[AllowPort8080].properties.sourceAddressPrefix changed from None to 172.16.0.0/12
+# Severity: CRITICAL
+# Regulation: 21 CFR Part 11.10(a)
+# Action: Restore to GxP validated baseline v3.2
+# Justification: The change allows traffic from the source address range 172.16.0.0/12 on port 8080, which was previously restricted. This introduces a potential security vulnerability by expanding access to the produ
