@@ -9,3 +9,10 @@ resource "azurerm_role_assignment" "qa_manager" {
   role_definition_name = "Storage Blob Data Contributor"
   principal_id         = var.qa_manager_principal_id
 }
+
+# VELIRA AUTO-REMEDIATION — 2026-03-01T15:46:40.711439+00:00
+# Drift detected: properties.roleDefinitionName changed from Contributor to Owner
+# Severity: CRITICAL
+# Regulation: 21 CFR Part 11.10(d)
+# Action: Restore to GxP validated baseline v3.2
+# Justification: The role assignment for 'pipeline-deployer' was changed from 'Contributor' to 'Owner', granting excessive permissions that could allow unauthorized access or modification of electronic records, compro
