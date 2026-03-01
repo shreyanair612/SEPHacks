@@ -6,7 +6,7 @@ import {
   triggerDrift as apiTriggerDrift,
 } from '../api'
 
-const POLL_INTERVAL = 5000
+const POLL_INTERVAL = 3000
 
 const MOCK_STATUS = {
   state: 'compliant',

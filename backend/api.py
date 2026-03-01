@@ -10,6 +10,7 @@ from __future__ import annotations
 from dotenv import load_dotenv
 load_dotenv()
 
+import asyncio
 import json
 import uuid
 from datetime import datetime, timezone
@@ -25,6 +26,7 @@ from models import DriftSeverity
 from comparison_engine import compare_configs, load_config
 from classification import classify_all, get_overall_severity
 from github_pr import create_remediation_pr
+from github_watcher import run_watcher, stop_watcher, get_watcher_status, reset_watcher_state
 from cosmos_client import (
     save_drift_event,
     save_audit_record,
@@ -255,7 +257,18 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
     store.current_config = json.loads(json.dumps(store.baseline))
     store._update_status()
     print("[Velira] Loaded baseline v3.2 — 4 resources — environment COMPLIANT")
-    yield
+
+    # Start the GitHub file watcher as a background task
+    watcher_task = asyncio.create_task(run_watcher(store))
+    try:
+        yield
+    finally:
+        watcher_task.cancel()
+        stop_watcher()
+        try:
+            await watcher_task
+        except asyncio.CancelledError:
+            pass
 
 
 app = FastAPI(
@@ -377,6 +390,20 @@ def trigger_drift(req: TriggerRequest) -> dict:
     except Exception as e:
         print(f"[api] trigger_drift error: {e}")
         return {"error": f"Failed to trigger drift: {e}"}
+
+
+@app.post("/api/reset")
+def reset_state() -> dict:
+    """Reset the dashboard and watcher to clean state."""
+    store.reset()
+    reset_watcher_state()
+    return {"status": "reset", "state": "compliant"}
+
+
+@app.get("/api/watcher-status")
+def watcher_status() -> dict:
+    """Return the current GitHub file watcher state."""
+    return get_watcher_status()
 
 
 def _build_resource_view() -> list[dict]:
