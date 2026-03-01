@@ -21,3 +21,10 @@ resource "azurerm_network_security_group" "pipeline_nsg" {
     baseline_version = "3.2"
   }
 }
+
+# VELIRA AUTO-REMEDIATION — 2026-03-01T15:46:40.711439+00:00
+# Drift detected: properties.securityRules[AllowHTTPS].properties.sourceAddressPrefix changed from 10.0.0.0/8 to *
+# Severity: CRITICAL
+# Regulation: 21 CFR Part 11.10(d)
+# Action: Restore to GxP validated baseline v3.2
+# Justification: The source address prefix for the HTTPS security rule was changed from a restricted range (10.0.0.0/8) to an open wildcard (*) allowing traffic from any IP address, which compromises network security 
