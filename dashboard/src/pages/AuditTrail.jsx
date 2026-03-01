@@ -1,11 +1,16 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { Download } from 'lucide-react'
 import Sidebar from '../components/Sidebar'
 import StatusPill from '../components/StatusPill'
 import { useApp } from '../context/AppContext'
 
 export default function AuditTrail() {
-  const { events, status } = useApp()
+  const { events, status, audit, auditLoading, auditError, loadAudit } = useApp()
+
+  // Fetch audit trail on mount
+  useEffect(() => {
+    loadAudit()
+  }, [loadAudit])
 
   async function exportAudit() {
     const payload = {
@@ -34,6 +39,9 @@ export default function AuditTrail() {
     URL.revokeObjectURL(url)
   }
 
+  // Use real audit trail records from /api/audit-trail
+  const rows = audit.length > 0 ? audit : []
+
   return (
     <div style={{ minHeight: '100vh' }}>
       <Sidebar />
@@ -54,46 +62,61 @@ export default function AuditTrail() {
           </button>
         </div>
 
+        {auditError && (
+          <div style={{ marginBottom: 12, padding: '8px 16px', borderRadius: 4, background: 'rgba(239, 83, 80, 0.1)', color: 'var(--status-critical)', fontSize: 12 }}>
+            Failed to load audit trail: {auditError}
+          </div>
+        )}
+
         <div className="glass-panel-static" style={{ overflow: 'hidden' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
             <thead>
               <tr style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.04)' }}>
-                {['Timestamp', 'Resource', 'Type', 'Change', 'Severity', 'Regulation', 'PR', 'Status'].map(h => (
+                {['Timestamp', 'Action', 'Resource', 'Tier', 'Regulation', 'PR', 'Details'].map(h => (
                   <th key={h} style={{ textAlign: 'left', padding: '12px 16px', fontSize: 10, fontWeight: 600, letterSpacing: '0.02em', color: 'var(--text-muted)', textTransform: 'uppercase' }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {(events || []).map(e => (
-                <tr key={e.id} style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.04)', transition: 'background var(--transition-smooth)' }}
+              {rows.map(r => (
+                <tr key={r.id} style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.04)', transition: 'background var(--transition-smooth)' }}
                   onMouseEnter={ev => ev.currentTarget.style.background = 'rgba(152, 193, 217, 0.03)'}
                   onMouseLeave={ev => ev.currentTarget.style.background = 'transparent'}
                 >
-                  <td style={{ padding: '12px 16px', color: 'var(--text-muted)', fontWeight: 300 }}>{new Date(e.timestamp).toLocaleString()}</td>
-                  <td style={{ padding: '12px 16px', color: '#FFFFFF', fontWeight: 600 }}>{e.resource_id}</td>
-                  <td style={{ padding: '12px 16px', color: 'var(--text-muted)', fontWeight: 400 }}>{e.resource_type}</td>
-                  <td style={{ padding: '12px 16px', color: 'var(--text-secondary)', fontSize: 11, fontWeight: 400 }}>
-                    {e.attribute_path}: {String(e.baseline_value)} → {String(e.current_value)}
+                  <td style={{ padding: '12px 16px', color: 'var(--text-muted)', fontWeight: 300 }}>
+                    {new Date(r.timestamp).toLocaleString()}
                   </td>
-                  <td style={{ padding: '12px 16px' }}><StatusPill tier={e.tier}>{e.tier}</StatusPill></td>
-                  <td style={{ padding: '12px 16px', color: 'var(--text-muted)', fontWeight: 400, maxWidth: 160 }}>{e.regulation_reference || '-'}</td>
+                  <td style={{ padding: '12px 16px', color: '#FFFFFF', fontWeight: 600 }}>
+                    {r.action_type || r.action || '-'}
+                  </td>
+                  <td style={{ padding: '12px 16px', color: 'var(--text-secondary)', fontWeight: 400 }}>
+                    {r.resource_id || r.resource || '-'}
+                  </td>
                   <td style={{ padding: '12px 16px' }}>
-                    {e.pr && e.pr.pr_url ? (
-                      <a href={e.pr.pr_url} target="_blank" rel="noreferrer" style={{ color: 'var(--accent-primary)', fontWeight: 500 }}>View PR</a>
+                    {r.tier ? <StatusPill tier={r.tier}>{r.tier}</StatusPill> : <span style={{ color: 'var(--text-muted)' }}>-</span>}
+                  </td>
+                  <td style={{ padding: '12px 16px', color: 'var(--text-muted)', fontWeight: 400, maxWidth: 160 }}>
+                    {r.regulation_reference || '-'}
+                  </td>
+                  <td style={{ padding: '12px 16px' }}>
+                    {r.pr_url ? (
+                      <a href={r.pr_url} target="_blank" rel="noreferrer" style={{ color: 'var(--accent-primary)', fontWeight: 500 }}>View PR</a>
                     ) : <span style={{ color: 'var(--text-muted)' }}>-</span>}
                   </td>
-                  <td style={{ padding: '12px 16px' }}>
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: e.status === 'open' ? 'var(--status-warning)' : 'var(--status-success)' }} />
-                      <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}>{e.status}</span>
-                    </span>
+                  <td style={{ padding: '12px 16px', color: 'var(--text-secondary)', fontWeight: 400, maxWidth: 240, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {r.details || '-'}
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-          {(!events || events.length === 0) && (
-            <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)', fontSize: 13, fontWeight: 300 }}>No audit entries</div>
+          {auditLoading && (
+            <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)', fontSize: 13 }}>Loading audit trail...</div>
+          )}
+          {!auditLoading && rows.length === 0 && (
+            <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)', fontSize: 13, fontWeight: 300 }}>
+              No audit entries — trigger a drift scenario first
+            </div>
           )}
         </div>
       </div>

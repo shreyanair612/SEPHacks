@@ -1,70 +1,155 @@
-import React, { createContext, useContext, useState, useEffect, useRef } from 'react'
-import * as api from '../api'
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react'
+import {
+  fetchStatus,
+  fetchEvents,
+  fetchAuditTrail,
+  triggerDrift as apiTriggerDrift,
+} from '../api'
+
+const POLL_INTERVAL = 5000
 
 const MOCK_STATUS = {
-  environment: "gxp-prod-eastus",
-  risk_score: 85,
-  counts: { critical: 2, suspicious: 3, allowed: 1 },
-  last_updated: new Date().toISOString()
+  state: 'compliant',
+  environment: 'gxp-prod-eastus',
+  risk_score: 0,
+  counts: { critical: 0, suspicious: 0, allowed: 0 },
+  last_updated: new Date().toISOString(),
+  total_resources: 4,
+  compliant_resources: 4,
+  drifted_resources: 0,
 }
-
-const MOCK_EVENTS = [
-  {
-    id: "mock-1",
-    resource_id: "genomics-data-storage-prod",
-    resource_type: "Storage",
-    attribute_path: "properties.encryption.enabled",
-    baseline_value: true,
-    current_value: false,
-    tier: "critical",
-    reasoning: "Encryption was disabled on a storage account containing regulated genomic data. This directly violates 21 CFR Part 11.10(a) which requires controls to ensure data integrity and authenticity of electronic records.",
-    regulation_reference: "21 CFR Part 11.10(a)",
-    remediation_suggestion: 'resource "azurerm_storage_account" "genomics" {\n  name = "genomicsdatastorageprod"\n}',
-    gxp_impact: "Storage account is no longer validated for regulated clinical data. FDA submission risk.",
-    pr: { pr_url: "https://github.com/latch-demo/infra/pull/42", pr_real: false },
-    timestamp: "2025-03-01T00:00:05Z",
-    status: "open"
-  }
-]
 
 const AppContext = createContext(null)
 
-export function AppProvider({ children }){
+export function AppProvider({ children }) {
+  // ── Status ──
   const [status, setStatus] = useState(null)
-  const [events, setEvents] = useState(null)
-  const [offline, setOffline] = useState(false)
-  const lastFetchedRef = useRef(null)
+  const [statusLoading, setStatusLoading] = useState(true)
+  const [statusError, setStatusError] = useState(null)
 
-  async function loadAll(){
+  // ── Events ──
+  const [events, setEvents] = useState([])
+  const [eventsLoading, setEventsLoading] = useState(true)
+  const [eventsError, setEventsError] = useState(null)
+
+  // ── Selected event detail ──
+  const [selectedEventId, setSelectedEventId] = useState(null)
+
+  // ── Audit trail (loaded on demand, not polled) ──
+  const [audit, setAudit] = useState([])
+  const [auditLoading, setAuditLoading] = useState(false)
+  const [auditError, setAuditError] = useState(null)
+
+  // ── Trigger ──
+  const [triggerLoading, setTriggerLoading] = useState(false)
+  const [triggerError, setTriggerError] = useState(null)
+
+  // ── Offline flag ──
+  const [offline, setOffline] = useState(false)
+
+  // ── Loaders ──
+  const loadStatus = useCallback(async () => {
     try {
-      const [s, e] = await Promise.all([api.getStatus(), api.getEvents()])
+      const s = await fetchStatus()
       setStatus(s)
-      setEvents(e)
+      setStatusError(null)
       setOffline(false)
-      lastFetchedRef.current = new Date().toISOString()
-    } catch (err){
+    } catch (err) {
+      setStatusError(err.message)
       setOffline(true)
       setStatus(prev => prev || MOCK_STATUS)
-      setEvents(prev => prev || MOCK_EVENTS)
+    } finally {
+      setStatusLoading(false)
     }
-  }
-
-  useEffect(() => {
-    loadAll()
-    const id = setInterval(loadAll, 5000)
-    return () => clearInterval(id)
   }, [])
+
+  const loadEvents = useCallback(async () => {
+    try {
+      const e = await fetchEvents()
+      const sorted = Array.isArray(e)
+        ? e.sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || ''))
+        : []
+      setEvents(sorted)
+      setEventsError(null)
+      setOffline(false)
+    } catch (err) {
+      setEventsError(err.message)
+      setOffline(true)
+    } finally {
+      setEventsLoading(false)
+    }
+  }, [])
+
+  const loadAudit = useCallback(async () => {
+    setAuditLoading(true)
+    try {
+      const data = await fetchAuditTrail()
+      setAudit(data.entries || [])
+      setAuditError(null)
+    } catch (err) {
+      setAuditError(err.message)
+    } finally {
+      setAuditLoading(false)
+    }
+  }, [])
+
+  // ── Polling: status + events only ──
+  useEffect(() => {
+    loadStatus()
+    loadEvents()
+    const id = setInterval(() => {
+      loadStatus()
+      loadEvents()
+    }, POLL_INTERVAL)
+    return () => clearInterval(id)
+  }, [loadStatus, loadEvents])
+
+  // ── Trigger drift ──
+  const handleTriggerDrift = useCallback(async (scenario = 'critical') => {
+    setTriggerLoading(true)
+    setTriggerError(null)
+    try {
+      await apiTriggerDrift(scenario)
+      // Immediately refresh status + events instead of waiting for next poll
+      await Promise.all([loadStatus(), loadEvents()])
+    } catch (err) {
+      setTriggerError('Failed to trigger drift scenario')
+    } finally {
+      setTriggerLoading(false)
+    }
+  }, [loadStatus, loadEvents])
 
   return (
     <AppContext.Provider value={{
-      status, events, offline, lastFetchedAt: lastFetchedRef.current
+      // Status
+      status,
+      statusLoading,
+      statusError,
+      // Events
+      events,
+      eventsLoading,
+      eventsError,
+      // Selected event
+      selectedEventId,
+      setSelectedEventId,
+      // Audit trail
+      audit,
+      auditLoading,
+      auditError,
+      loadAudit,
+      // Trigger
+      triggerLoading,
+      triggerError,
+      handleTriggerDrift,
+      // General
+      offline,
     }}>
       {children}
     </AppContext.Provider>
   )
 }
 
-export function useApp(){
+export function useApp() {
   const ctx = useContext(AppContext)
   if (!ctx) throw new Error('useApp must be used within AppProvider')
   return ctx

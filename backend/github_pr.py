@@ -13,7 +13,10 @@ import subprocess
 import shutil
 from datetime import datetime, timezone
 
-REPO = os.environ.get("VELIRA_GITHUB_REPO", "shreyanair612/SEPHacks")
+REPO = os.environ.get(
+    "VELIRA_GITHUB_REPO",
+    f"{os.environ.get('GITHUB_REPO_OWNER', 'shreyanair612')}/{os.environ.get('GITHUB_REPO_NAME', 'latch-demo-env')}",
+)
 DASHBOARD_URL = os.environ.get("VELIRA_DASHBOARD_URL", "http://localhost:5173")
 MOCK_PR_URL = f"https://github.com/{REPO}/pull/1042"
 
@@ -67,6 +70,14 @@ resource "azurerm_storage_account" "genomics_data" {{
 '''
 
 
+def _gh_env() -> dict:
+    """Build a clean env for gh CLI calls, stripping GITHUB_TOKEN so gh uses its own auth."""
+    env = os.environ.copy()
+    env.pop("GITHUB_TOKEN", None)
+    env.pop("GH_TOKEN", None)
+    return env
+
+
 def _gh(args: list[str], input_data: str | None = None) -> dict | str:
     """Run a gh CLI command and return parsed JSON or raw output."""
     result = subprocess.run(
@@ -75,6 +86,7 @@ def _gh(args: list[str], input_data: str | None = None) -> dict | str:
         text=True,
         input=input_data,
         timeout=30,
+        env=_gh_env(),
     )
     if result.returncode != 0:
         raise RuntimeError(f"gh {' '.join(args[:3])}... failed: {result.stderr.strip()}")
@@ -95,6 +107,7 @@ def _gh_available() -> bool:
         result = subprocess.run(
             ["gh", "auth", "status"],
             capture_output=True, text=True, timeout=10,
+            env=_gh_env(),
         )
         return result.returncode == 0
     except Exception:

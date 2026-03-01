@@ -1,20 +1,21 @@
 import React from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { LayoutDashboard, ShieldCheck, Activity, FileText, BarChart2, Settings, HelpCircle } from 'lucide-react'
 
 const mainItems = [
-  { label: 'Dashboard', icon: LayoutDashboard, active: true },
-  { label: 'Compliance', icon: ShieldCheck },
-  { label: 'Drift Detection', icon: Activity },
-  { label: 'Policies', icon: FileText },
-  { label: 'Reports', icon: BarChart2 },
+  { label: 'Dashboard', icon: LayoutDashboard, path: '/dashboard' },
+  { label: 'Drift Events', icon: Activity, path: '/events' },
+  { label: 'Audit Trail', icon: FileText, path: '/audit' },
+  { label: 'Compliance', icon: ShieldCheck, path: null },
+  { label: 'Reports', icon: BarChart2, path: null },
 ]
 
 const systemItems = [
-  { label: 'Settings', icon: Settings },
-  { label: 'Help', icon: HelpCircle },
+  { label: 'Settings', icon: Settings, path: null },
+  { label: 'Help', icon: HelpCircle, path: null },
 ]
 
-function NavSection({ label, items }) {
+function NavSection({ label, items, currentPath, navigate }) {
   return (
     <div>
       <div style={{
@@ -30,36 +31,39 @@ function NavSection({ label, items }) {
       </div>
       {items.map(item => {
         const Icon = item.icon
+        const isActive = item.path && currentPath === item.path
         return (
           <div
             key={item.label}
             className="nav-item"
+            onClick={() => item.path && navigate(item.path)}
             style={{
               height: 40,
               padding: '0 24px',
               display: 'flex',
               alignItems: 'center',
               gap: 12,
-              cursor: 'pointer',
+              cursor: item.path ? 'pointer' : 'default',
               fontSize: 13,
               fontWeight: 500,
               borderRadius: 0,
-              borderLeft: item.active
+              borderLeft: isActive
                 ? '2px solid var(--accent-primary)'
                 : '2px solid transparent',
-              color: item.active ? '#FFFFFF' : 'var(--text-muted)',
-              background: item.active
+              color: isActive ? '#FFFFFF' : 'var(--text-muted)',
+              background: isActive
                 ? 'rgba(152, 193, 217, 0.08)'
                 : 'transparent',
+              opacity: item.path ? 1 : 0.5,
             }}
             onMouseEnter={e => {
-              if (!item.active) {
+              if (!isActive && item.path) {
                 e.currentTarget.style.color = 'var(--text-secondary)'
                 e.currentTarget.style.background = 'rgba(152, 193, 217, 0.04)'
               }
             }}
             onMouseLeave={e => {
-              if (!item.active) {
+              if (!isActive && item.path) {
                 e.currentTarget.style.color = 'var(--text-muted)'
                 e.currentTarget.style.background = 'transparent'
               }
@@ -75,6 +79,9 @@ function NavSection({ label, items }) {
 }
 
 export default function Sidebar() {
+  const navigate = useNavigate()
+  const location = useLocation()
+
   return (
     <aside style={{
       position: 'fixed',
@@ -89,7 +96,10 @@ export default function Sidebar() {
       zIndex: 50,
     }}>
       {/* Logo */}
-      <div style={{ height: 72, display: 'flex', alignItems: 'center', padding: '0 24px' }}>
+      <div
+        onClick={() => navigate('/dashboard')}
+        style={{ height: 72, display: 'flex', alignItems: 'center', padding: '0 24px', cursor: 'pointer' }}
+      >
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ marginRight: 10, flexShrink: 0 }}>
           <path d="M8 1L2 4v4c0 3.5 2.5 6.5 6 7.5 3.5-1 6-4 6-7.5V4L8 1z" fill="#98C1D9" />
         </svg>
@@ -108,8 +118,8 @@ export default function Sidebar() {
 
       {/* Navigation */}
       <nav style={{ flex: 1, paddingTop: 24, display: 'flex', flexDirection: 'column', gap: 24 }}>
-        <NavSection label="MAIN" items={mainItems} />
-        <NavSection label="SYSTEM" items={systemItems} />
+        <NavSection label="MAIN" items={mainItems} currentPath={location.pathname} navigate={navigate} />
+        <NavSection label="SYSTEM" items={systemItems} currentPath={location.pathname} navigate={navigate} />
       </nav>
 
       {/* Separator */}

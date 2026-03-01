@@ -12,6 +12,8 @@ from typing import Any
 from models import Deviation, DriftClassification, DriftSeverity
 from cached_responses import get_cached_classification
 from azure_ai_client import call_azure_ai
+from azure_search_client import search_fda_regulations
+from github_pr_client import create_drift_pr
 
 GXP_SYSTEM_PROMPT = """You are Velira, an FDA compliance AI engine specialized in GxP cloud configuration drift analysis.
 
@@ -55,8 +57,20 @@ Respond in JSON format:
 }}"""
 
 
-def _classify_with_azure_ai(deviation: Deviation) -> dict | None:
-    """Call Azure AI Function for classification. Returns normalized dict or None."""
+def _classify_with_azure_ai(deviation: Deviation) -> tuple[dict | None, str]:
+    """Call Azure Search + Azure AI Function for classification.
+
+    Returns:
+        (classification_dict or None, source_label)
+    """
+    # Step 1: Search FDA regulations for relevant context
+    drift_summary = (
+        f"Attribute '{deviation.attribute_path}' on '{deviation.resource_name}' "
+        f"changed from '{deviation.baseline_value}' to '{deviation.current_value}'."
+    )
+    fda_context, search_source = search_fda_regulations(drift_summary)
+
+    # Step 2: Build the classification prompt
     message = f"{GXP_SYSTEM_PROMPT}\n\n{GXP_USER_PROMPT_TEMPLATE.format(
         resource_name=deviation.resource_name,
         resource_type=deviation.resource_type,
@@ -67,15 +81,24 @@ def _classify_with_azure_ai(deviation: Deviation) -> dict | None:
         detected_at=deviation.detected_at,
     )}"
 
-    response_text = call_azure_ai(message)
+    # Step 3: Call Azure AI with FDA context
+    response_text = call_azure_ai(message, fda_context=fda_context)
     if response_text is None:
-        return None
+        return None, search_source
 
     try:
         data = json.loads(response_text)
     except json.JSONDecodeError:
         print(f"[Velira] Azure AI returned non-JSON response — falling back")
-        return None
+        return None, search_source
+
+    # Step 4: Build source label
+    if search_source == "azure-search":
+        source = "azure-search+azure-ai"
+    elif search_source == "hardcoded-fallback":
+        source = "hardcoded-fda+azure-ai"
+    else:
+        source = f"{search_source}+azure-ai"
 
     # Normalize: Azure Function uses "tier", our schema uses "severity"
     return {
@@ -85,7 +108,7 @@ def _classify_with_azure_ai(deviation: Deviation) -> dict | None:
         "cfr_reference": data.get("cfr_reference", ""),
         "remediation_suggestion": data.get("remediation_suggestion", ""),
         "remediation_code": data.get("remediation_code", ""),
-    }
+    }, source
 
 
 def _classify_with_cache(deviation: Deviation) -> dict | None:
@@ -112,9 +135,8 @@ def classify_deviation(deviation: Deviation) -> DriftClassification:
     Classify a single deviation. Tries Azure OpenAI first,
     falls back to cached responses, then to default classification.
     """
-    # Try Azure AI Function first
-    result = _classify_with_azure_ai(deviation)
-    source = "azure-ai"
+    # Try Azure Search + Azure AI Function first
+    result, source = _classify_with_azure_ai(deviation)
 
     # Fall back to cache
     if result is None:
@@ -127,6 +149,32 @@ def classify_deviation(deviation: Deviation) -> DriftClassification:
         source = "default"
 
     print(f"[Velira] Classified {deviation.attribute_path} → {result['severity']} (source: {source})")
+
+    # Auto-generate remediation PR for critical drift
+    pr_url = None
+    if result["severity"] == "critical":
+        drift_event = {
+            "resource_id": deviation.resource_name,
+            "attribute": deviation.attribute_path,
+            "baseline_value": str(deviation.baseline_value),
+            "current_value": str(deviation.current_value),
+            "timestamp": deviation.detected_at,
+        }
+        classification_dict = {
+            "tier": result["severity"],
+            "reason": result["reason"],
+            "regulation_reference": result.get("cfr_reference", "21 CFR Part 11.10(a)"),
+            "source": source,
+        }
+        pr_url = create_drift_pr(drift_event, classification_dict)
+        if pr_url:
+            result["pr_url"] = pr_url
+            print(f"[classification] GitHub PR created: {pr_url}")
+        else:
+            result["pr_url"] = None
+            print("[classification] GitHub PR creation failed — continuing without PR")
+    else:
+        result["pr_url"] = None
 
     severity_map = {
         "critical": DriftSeverity.CRITICAL,

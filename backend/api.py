@@ -25,6 +25,14 @@ from models import DriftSeverity
 from comparison_engine import compare_configs, load_config
 from classification import classify_all, get_overall_severity
 from github_pr import create_remediation_pr
+from cosmos_client import (
+    save_drift_event,
+    save_audit_record,
+    update_drift_event_pr,
+    get_drift_event_by_id,
+    get_all_drift_events,
+    get_audit_trail as get_cosmos_audit_trail,
+)
 
 DATA_DIR = Path(__file__).parent.parent / "data" / "configs"
 
@@ -172,7 +180,40 @@ class Store:
             }
             self.events.append(event)
 
-            # Audit trail entry
+            # Persist drift event to CosmosDB
+            save_drift_event(event)
+
+            # Persist audit record for drift detection
+            save_audit_record({
+                "action_type": "drift_detected",
+                "event_id": event["id"],
+                "resource_id": event["resource_id"],
+                "tier": event["tier"],
+                "regulation_reference": event.get("regulation_reference"),
+                "details": f"Drift detected on {event['resource_id']}: {event.get('attribute_path')} changed from {event.get('baseline_value')} to {event.get('current_value')}",
+                "timestamp": event["timestamp"],
+            })
+
+            # If a PR was created, update the event in Cosmos and save an audit record
+            _pr_url = (event.get("pr") or {}).get("pr_url") or event.get("pr_link")
+            if _pr_url:
+                update_drift_event_pr(
+                    event_id=event["id"],
+                    resource_id=event["resource_id"],
+                    pr_url=_pr_url,
+                    pr_real=(event.get("pr") or {}).get("pr_real", False),
+                )
+                save_audit_record({
+                    "action_type": "pr_created",
+                    "event_id": event["id"],
+                    "resource_id": event["resource_id"],
+                    "tier": event["tier"],
+                    "pr_url": _pr_url,
+                    "details": f"Auto-remediation PR created for {event['resource_id']}",
+                    "timestamp": event["timestamp"],
+                })
+
+            # Audit trail entry (in-memory)
             self.audit_trail.append({
                 "id": str(uuid.uuid4())[:8],
                 "timestamp": now.isoformat(),
@@ -241,29 +282,87 @@ class TriggerRequest(BaseModel):
 
 # ── Endpoints ────────────────────────────────────────────────────
 
+@app.get("/api/health")
+def health_check() -> dict:
+    """Simple health check endpoint."""
+    return {"status": "ok", "service": "velira-api", "version": "0.1.0"}
+
+
 @app.get("/api/status")
 def get_status() -> dict:
     """Current environment status with drift summary."""
-    return {
-        **store.status,
-        "classifications": store.classifications,
-        "resources": _build_resource_view(),
-    }
+    try:
+        return {
+            **store.status,
+            "classifications": store.classifications,
+            "resources": _build_resource_view(),
+        }
+    except Exception as e:
+        return {"error": f"Failed to fetch status: {e}"}
 
 
 @app.get("/api/events")
 def get_events() -> list:
-    """Drift event feed, newest first. Returns a bare array."""
-    return sorted(store.events, key=lambda e: e["timestamp"], reverse=True)
+    """Drift event feed, newest first. Returns a bare array.
+    Merges in-memory events with any persisted in CosmosDB.
+    """
+    try:
+        # Start with in-memory events
+        seen_ids = {e["id"] for e in store.events}
+        merged = list(store.events)
+
+        # Pull any additional events from CosmosDB
+        cosmos_events = get_all_drift_events()
+        for ce in cosmos_events:
+            if ce.get("id") not in seen_ids:
+                merged.append(ce)
+                seen_ids.add(ce["id"])
+
+        return sorted(merged, key=lambda e: e.get("timestamp", ""), reverse=True)
+    except Exception as e:
+        print(f"[api] get_events error: {e}")
+        return sorted(store.events, key=lambda e: e["timestamp"], reverse=True)
+
+
+@app.get("/api/events/{event_id}")
+def get_event_by_id(event_id: str) -> dict:
+    """Look up a single drift event by ID. Checks CosmosDB first, then in-memory."""
+    try:
+        event = get_drift_event_by_id(event_id)
+        if event:
+            return event
+    except Exception as e:
+        print(f"[api] Cosmos lookup failed for {event_id}: {e}")
+
+    # Fall back to in-memory store
+    for e in store.events:
+        if e["id"] == event_id:
+            return e
+    return {"error": "Event not found"}
 
 
 @app.get("/api/audit-trail")
 def get_audit_trail() -> dict:
-    """Full audit trail."""
-    return {
-        "entries": sorted(store.audit_trail, key=lambda e: e["timestamp"], reverse=True),
-        "total": len(store.audit_trail),
-    }
+    """Full audit trail. Merges in-memory records with CosmosDB."""
+    try:
+        seen_ids = {e["id"] for e in store.audit_trail}
+        merged = list(store.audit_trail)
+
+        # Pull any additional records from CosmosDB
+        cosmos_records = get_cosmos_audit_trail()
+        for cr in cosmos_records:
+            if cr.get("id") not in seen_ids:
+                merged.append(cr)
+                seen_ids.add(cr["id"])
+
+        sorted_entries = sorted(merged, key=lambda e: e.get("timestamp", ""), reverse=True)
+        return {"entries": sorted_entries, "total": len(sorted_entries)}
+    except Exception as e:
+        print(f"[api] get_audit_trail error: {e}")
+        return {
+            "entries": sorted(store.audit_trail, key=lambda e: e["timestamp"], reverse=True),
+            "total": len(store.audit_trail),
+        }
 
 
 @app.post("/api/trigger-drift")
@@ -272,8 +371,12 @@ def trigger_drift(req: TriggerRequest) -> dict:
     Trigger a drift scenario for demo purposes.
     Scenarios: compliant, allowed, suspicious, critical
     """
-    result = store.trigger_drift(req.scenario)
-    return result
+    try:
+        result = store.trigger_drift(req.scenario)
+        return result
+    except Exception as e:
+        print(f"[api] trigger_drift error: {e}")
+        return {"error": f"Failed to trigger drift: {e}"}
 
 
 def _build_resource_view() -> list[dict]:
