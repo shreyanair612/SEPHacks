@@ -9,10 +9,10 @@ const mainItems = [
 ]
 
 const systemItems = [
-  { label: 'Compliance', icon: ShieldCheck, path: null },
-  { label: 'Reports', icon: BarChart2, path: null },
-  { label: 'Settings', icon: Settings, path: null },
-  { label: 'Help', icon: HelpCircle, path: null },
+  { label: 'Compliance', icon: ShieldCheck, path: '/compliance' },
+  { label: 'Reports', icon: BarChart2, path: '/reports' },
+  { label: 'Settings', icon: Settings, path: '/settings' },
+  { label: 'Help', icon: HelpCircle, path: '/help' },
 ]
 
 function NavSection({ label, items, currentPath, navigate }) {
