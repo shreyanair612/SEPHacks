@@ -9,7 +9,7 @@ import {
 } from '../api'
 
 const POLL_INTERVAL = 3000
-const LIVE_URL = 'https://latch.onrender.com'
+const LIVE_URL = 'https://latch-api.onrender.com'
 
 const MOCK_STATUS = {
   state: 'compliant',
