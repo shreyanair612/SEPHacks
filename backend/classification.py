@@ -71,7 +71,7 @@ def _classify_with_azure_ai(deviation: Deviation) -> tuple[dict | None, str]:
     fda_context, search_source = search_fda_regulations(drift_summary)
 
     # Step 2: Build the classification prompt
-    message = f"{GXP_SYSTEM_PROMPT}\n\n{GXP_USER_PROMPT_TEMPLATE.format(
+    user_prompt = GXP_USER_PROMPT_TEMPLATE.format(
         resource_name=deviation.resource_name,
         resource_type=deviation.resource_type,
         resource_id=deviation.resource_id,
@@ -79,7 +79,8 @@ def _classify_with_azure_ai(deviation: Deviation) -> tuple[dict | None, str]:
         baseline_value=deviation.baseline_value,
         current_value=deviation.current_value,
         detected_at=deviation.detected_at,
-    )}"
+    )
+    message = f"{GXP_SYSTEM_PROMPT}\n\n{user_prompt}"
 
     # Step 3: Call Azure AI with FDA context
     response_text = call_azure_ai(message, fda_context=fda_context)
