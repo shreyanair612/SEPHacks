@@ -6,11 +6,11 @@ const mainItems = [
   { label: 'Dashboard', icon: LayoutDashboard, path: '/dashboard' },
   { label: 'Drift Events', icon: Activity, path: '/events' },
   { label: 'Audit Trail', icon: FileText, path: '/audit' },
-  { label: 'Compliance', icon: ShieldCheck, path: null },
-  { label: 'Reports', icon: BarChart2, path: null },
 ]
 
 const systemItems = [
+  { label: 'Compliance', icon: ShieldCheck, path: null },
+  { label: 'Reports', icon: BarChart2, path: null },
   { label: 'Settings', icon: Settings, path: null },
   { label: 'Help', icon: HelpCircle, path: null },
 ]

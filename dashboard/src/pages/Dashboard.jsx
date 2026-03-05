@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
 import {
   Search, Bell,
-  FileText, ShieldCheck, Activity, AlertTriangle, Zap, Loader,
+  FileText, ShieldCheck, Activity, AlertTriangle, Loader,
 } from 'lucide-react'
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -574,7 +574,7 @@ export default function Dashboard() {
   } = useApp()
 
   const [focusedEventId, setFocusedEventId] = useState(null)
-  const [triggerScenario, setTriggerScenario] = useState('critical')
+
 
   const handleFocusHandled = useCallback(() => {
     setFocusedEventId(null)
@@ -606,35 +606,13 @@ export default function Dashboard() {
               Dashboard
             </h1>
             <p style={{ fontSize: 13, fontWeight: 300, color: 'var(--text-muted)', margin: '4px 0 0 0' }}>
-              Infrastructure compliance monitoring
+              GxP Infrastructure Compliance Monitoring
               <GoLiveButton />
             </p>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            {/* Trigger drift controls */}
-            <select
-              value={triggerScenario}
-              onChange={e => setTriggerScenario(e.target.value)}
-              style={{
-                height: 36,
-                background: 'rgba(83, 58, 123, 0.4)',
-                border: '1px solid var(--border-default)',
-                borderRadius: 4,
-                padding: '0 10px',
-                color: '#FFFFFF',
-                fontSize: 12,
-                fontWeight: 500,
-                fontFamily: 'inherit',
-                outline: 'none',
-                cursor: 'pointer',
-              }}
-            >
-              <option value="critical">Critical</option>
-              <option value="suspicious">Suspicious</option>
-              <option value="allowed">Allowed</option>
-            </select>
             <button
-              onClick={() => handleTriggerDrift(triggerScenario)}
+              onClick={() => handleTriggerDrift('critical')}
               disabled={triggerLoading}
               style={{
                 display: 'flex',
@@ -656,13 +634,10 @@ export default function Dashboard() {
             >
               {triggerLoading
                 ? <Loader size={14} style={{ animation: 'spin 1s linear infinite' }} />
-                : <Zap size={14} />
+                : <ShieldCheck size={14} />
               }
-              {triggerLoading ? 'Simulating...' : 'Simulate Drift'}
+              {triggerLoading ? 'Scanning...' : 'Run Scan'}
             </button>
-            {triggerError && (
-              <span style={{ fontSize: 11, color: 'var(--status-critical)' }}>{triggerError}</span>
-            )}
             <div style={{ position: 'relative' }}>
               <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
               <input

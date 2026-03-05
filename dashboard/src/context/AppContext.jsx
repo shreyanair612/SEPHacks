@@ -111,6 +111,7 @@ export function AppProvider({ children }) {
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       setConnectionState('connected')
       setOffline(false)
+      await apiTriggerDrift('critical')
       await Promise.all([loadStatus(), loadEvents()])
     } catch {
       setApiBase('')
